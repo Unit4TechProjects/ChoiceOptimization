@@ -1,0 +1,65 @@
+<project name="ChoiceOptimization" default="compile" basedir=".">
+    
+    <property name="src" location="."/>
+    <property name="build" location="build"/>
+    <property name="dist" location="dist"/>
+    <property name="testing" location = "${build}/testing"/>
+    <property name="release" location="dist/"/>
+    <property name="junit" location="lib/junit.jar"/>
+    <property name="hamcrest" location="lib/hamcrest.jar"/>
+
+    <target name="init" description="Creating build directories">
+        <tstamp/>
+        <mkdir dir="${build}"/>
+    </target>
+
+    <target name="compile" depends="init" description="Compiling project">
+        <javac includeantruntime="false" srcdir="${src}" destdir="${build}">
+            <classpath>
+                <pathelement path="${classpath}"/>
+                <pathelement location="${junit}"/>
+                <pathelement location="${hamcrest}"/>
+            </classpath>
+        </javac>
+    </target>
+
+    <target name="release" depends="compile" description="Building the release distribution">
+        <mkdir dir="${release}"/>
+        <jar jarfile="${release}/duty_scheduler-${DSTAMP}.jar" basedir="${build}">
+            <manifest>
+                <attribute name="Main-Class" value="duty_scheduler.Scheduler"/>
+            </manifest>
+            <exclude name="${build}/testing"/>
+        </jar>
+    </target>
+
+    <target name="clean" description="Cleaning up project directory">
+        <delete dir="${build}"/>
+        <delete dir="${dist}"/>
+        <delete verbose="true">
+            <fileset dir="${src}">
+                <include name="**/*.class"/>
+                <exclude name="**/*.java"/>
+            </fileset>
+        </delete>
+    </target>
+
+    <target name="runtests" depends="compile" description="Running JUnit tests">
+        <java classname="testing.TestLauncher">
+            <classpath>
+                <pathelement location="${build}"/>
+                <pathelement path="${classpath}"/>
+                <pathelement location="${junit}"/>
+                <pathelement location="${hamcrest}"/>
+            </classpath>
+        </java>
+    </target>
+
+    <target name="help">
+        <echo message="compile  ) Compile the ChoiceOptimization packages."/>
+        <echo message="release  ) Bundle the packages into a jar file, excluding the testing files."/>
+        <echo message="runtests ) Run JUnit test files for the project."/>
+        <echo message="clean    ) Clean up class and jar files from the project directories."/>
+    </target>
+
+</project>
