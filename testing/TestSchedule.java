@@ -51,7 +51,7 @@ public class TestSchedule {
     @Before public void setUp() {
         dutyList = new ArrayList<Duty>();
         for (int i = 0; i < 6; i += 1) {
-            dutyList.add(new Duty(THIS_YEAR, 1, i + 1));
+            dutyList.add(new Duty(THIS_YEAR, 1, i + 1, "/"));
         }
         raList = new ArrayList<RA>();
         for (int i = 0; i < 2; i += 1) {

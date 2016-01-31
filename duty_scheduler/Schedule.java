@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Set;
+import java.util.StringJoiner;
 
 import choice_optimizer.AbstractMapping;
 
@@ -105,6 +106,19 @@ public class Schedule extends AbstractMapping<RA, Duty> {
             result += "\n";
         }
         return result;
+    }
+
+    public String toCSV() {
+        StringJoiner lines = new StringJoiner("\n");
+        for (RA ra : mappings.keySet()) {
+            StringJoiner joiner = new StringJoiner(",");
+            joiner.add(ra.toString());
+            for (Duty duty : mappings.get(ra)) {
+                joiner.add(duty.toString());
+            }
+            lines.add(joiner.toString());
+        }
+        return lines.toString();
     }
 
     /**

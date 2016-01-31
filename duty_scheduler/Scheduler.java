@@ -26,6 +26,12 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.File;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+
 import java.text.SimpleDateFormat;
 
 import java.util.HashMap;
@@ -34,9 +40,8 @@ import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.Date;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONException;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /**
  * Main class for running the RA duty scheduling algorithm. 
@@ -53,6 +58,9 @@ public class Scheduler {
     private static final int MINS_PER_HR = 60;
     private static final int SECS_PER_MINUTE = 60;
     private static final int MILLIS_PER_SEC = 1000;
+
+    /* Matches dates formatted like mm/dd/yyyy, allowing for '-' or '.' in place of '/' */
+    private static final String DATE_REGEX = "[0-9]{1,2}([/\\-\\.])[0-9]{1,2}\\1[0-9]{4}";
 
     static final int INVALID_ITEM_PRIORITY = 0;
     static final int SEED_COUNT;
@@ -232,17 +240,54 @@ public class Scheduler {
     /**
      * Reads in a JSON data file and constructs RA and Duty instances from it. 
      */
-    private static void parseData() {
-        JSONObject data = new JSONObject(new String(readFile()));
-        createDutyList(data.getJSONArray("dates"));
-        dutyLookup = new HashMap<String, Duty>(dutyList.size());
-        for (Duty duty : dutyList) {
-            dutyLookup.put(duty.toString(), duty);
-        }
-        createRAList(data.getJSONArray("residentAssistants"));
+    private static void parseData(boolean primary) {
+        Charset ascii = StandardCharsets.US_ASCII;
+        BufferedReader reader = null;
         try {
+            Path inFile = Paths.get(DATA_FILE);
+            reader = Files.newBufferedReader(inFile, ascii);
+            String[] headings = reader.readLine().split(",");
+            int dateStartIndex = -1, dateEndIndex = -1, nameIndex = -1, dutyCountIndex = -1;
+            for (int i = 0; i < headings.length; i++) {
+                if (Pattern.matches(DATE_REGEX, headings[i])) {
+                    if (dateStartIndex == -1) {
+                        dateStartIndex = i;
+                    }
+                    String[] fields = headings[i].split("[-\\-\\.]");
+                    Duty d = new Duty(Integer.parseInt(fields[2]),
+                                      Integer.parseInt(fields[0]),
+                                      Integer.parseInt(fields[1]),
+                                      "/");
+                    dutyLookup.put(headings[i], d);
+                    dutyList.add(d);
+                } else {
+                    if (dateStartIndex != -1 && dateEndIndex == -1) {
+                        dateEndIndex = i;
+                    }
+                    if (headings[i].equals("Name")) {
+                        nameIndex = i;
+                    } else if (headings[i].equals("Duties")) {
+                        dutyCountIndex = i;
+                    }
+                }
+            }
+
+            String line = reader.readLine();
+            while (line != null) {
+                String[] values = line.split(",");
+                RA.RABuilder builder = new RA.RABuilder(values[nameIndex],
+                                                        dutyList.size(),
+                                                        Integer.parseInt(values[dutyCountIndex]));
+                for (int i = dateStartIndex; i <= dateEndIndex; i++) {
+                    builder.putPreference(dutyLookup.get(headings[i]), Integer.parseInt(values[i]));
+                }
+                raList.add(builder.build());
+            }
+
             ErrorChecker.evalPrefs(raList, dutyList);
-            ErrorChecker.checkConsistency(raList);
+            if (primary) {
+                ErrorChecker.checkConsistency(raList);
+            }
             if (!ALLOW_ILLEGALS) {
                 ErrorChecker.checkImpossible();
             } 
@@ -251,77 +296,7 @@ public class Scheduler {
             }
         } catch (RuntimeException e) {
             ErrorChecker.printExceptionToLog(e);
-        } 
-    }
-
-    /**
-     * Gets the content of a plain text file.
-     * 
-     * @return The contents of the data file as a String
-     */
-    private static String readFile() {
-        BufferedReader reader = null;
-        String result = "";
-        try {
-            File dataFile = new File(DATA_FILE);
-            if (!dataFile.exists()) {
-                throw new IOException("Missing data file: " + DATA_FILE);
-            }
-            reader = new BufferedReader(new FileReader(dataFile));
-            String line = reader.readLine();
-            while (line != null) {
-                result += line;
-                line = reader.readLine();
-            }
         } catch (IOException e) {
-            ErrorChecker.printExceptionToLog(e);
-        } finally {
-            try {
-                reader.close();
-            } catch (IOException e) {
-                System.out.println("Could not close data reader.");
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Creates an ArrayList of RA instances from a JSONArray of encoded data
-     * 
-     * @param jsonRAs A JSONArray contains information about RAs
-     */
-    private static void createRAList(JSONArray jsonRAs) {
-        try {
-            for (int i = 0; i < jsonRAs.length(); i += 1) {
-                JSONObject ra = jsonRAs.getJSONObject(i);
-                RA.RABuilder builder = new RA.RABuilder(ra.getString("name"), dutyList.size(), 
-                                                  ra.getInt("duties"));
-                JSONArray prefs = ra.getJSONArray("preferences");
-                for (int j = 0; j < prefs.length(); j += 1) {
-                    JSONObject pref = prefs.getJSONObject(j);
-                    builder.putPreference(dutyLookup.get(pref.getString("duty")), 
-                                          pref.getInt("prefVal"));
-                }
-                raList.add(builder.build());
-            }
-        } catch (JSONException e) {
-            ErrorChecker.printExceptionToLog(e);
-        }
-    }
-
-    /**
-     * Creates an ArrayList of Duty instances from a JSONArray of encoded data
-     * 
-     * @param jsonDuties A JSONArray contains information about Duty instances
-     */
-    private static void createDutyList(JSONArray jsonDuties) {
-        try {
-            for (int i = 0; i < jsonDuties.length(); i += 1) {
-                JSONObject duty = jsonDuties.getJSONObject(i);
-                dutyList.add(new Duty(duty.getInt("year"), duty.getInt("month"), 
-                                      duty.getInt("day")));
-            }
-        } catch (JSONException e) {
             ErrorChecker.printExceptionToLog(e);
         }
     }
@@ -389,19 +364,29 @@ public class Scheduler {
      * @param best The best Schedule found during the run
      * @param runTimeReport A String describing the runtime of the algorithm
      */
-    private static void printResults(Schedule best, String runTimeReport) {
+    private static void printResults(Schedule best, String runTimeReport, boolean secondary) {
+        String loc = DATA_FILE.substring(0, DATA_FILE.lastIndexOf(".")).replaceAll(" ", "_");
         String resultsFile = "schedule_" 
-                        + (new SimpleDateFormat("MM-dd-yyyy-hh:mm")).format(new Date()) + ".sched";
+                        + (new SimpleDateFormat("MM-dd-yyyy-hh:mm")).format(new Date());
+        if (secondary) {
+            resultsFile += loc + "-secondary.txt";
+        } else {
+            resultsFile += loc + "-primary.txt";
+        }
         PrintWriter dataOut = null;
+        PrintWriter tempOut = null;
         try {
             dataOut = new PrintWriter(resultsFile);
+            tempOut = new PrintWriter(loc + ".temp");
             dataOut.println(runTimeReport);
             dataOut.println("Duty Assignments:\n\n");
             dataOut.println(best.toString());
+            tempOut.println(best.toCSV());
         } catch (IOException e) {
             ErrorChecker.printExceptionToLog(e);
         } finally {
             dataOut.close();
+            tempOut.close();
             LOGGER.logFinishedExecution(resultsFile);
             LOGGER.close();
         }
@@ -430,14 +415,15 @@ public class Scheduler {
     /**
      * Main
      * 
-     * @param args Command line arguments (This code takes none)
+     * @param args Command line arguments 
      */
     public static void main(String[] args) {
+        boolean secondary = args[0].equals("-s");
         try {
             long timeElapsed = System.nanoTime();
-            parseData();
+            parseData(!secondary);
             Schedule best = run();
-            printResults(best, runTime(System.nanoTime() - timeElapsed));
+            printResults(best, runTime(System.nanoTime() - timeElapsed), secondary);
             if (ANALYZE) {
                 printAnalytics();
             }

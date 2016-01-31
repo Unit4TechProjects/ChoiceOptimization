@@ -45,7 +45,7 @@ public class Duty extends AbstractItem {
      * @param  month The month of this date. Must be in between 0 and 11, inclusive.
      * @param  day   The day of this date. It is trusted that this date is valid. 
      */
-    public Duty(int year, int month, int day) {
+    public Duty(int year, int month, int day, String sep) {
         date = Calendar.getInstance();
         try {
             ErrorChecker.inBounds("year", year, MIN_YEAR, -1);
@@ -56,16 +56,9 @@ public class Duty extends AbstractItem {
         } 
         date.set(year, month, day, 0, 0, 0); //Note: the constructor trusts that the day is valid
         date.set(Calendar.MILLISECOND, 0);
-        String formatString = "%d-";
-        if (month < 10) {
-            formatString += "0";
-        }
-        formatString += "%d-";
-        if (day < 10) {
-            formatString += "0";
-        }
-        formatString += "%d";
-        stringRep = String.format(formatString, year, month, day);
+        String m = String.format("%02d", month);
+        String d = String.format("%02d", day);
+        stringRep = String.format("%s%s%s%s%d", m, sep, d, sep, year);
     }
 
     /**

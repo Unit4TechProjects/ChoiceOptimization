@@ -47,10 +47,10 @@ public class TestRA {
     @Before public void setUp() {
         RABuilder builder = new RABuilder("Bob", 4, 2);
         duties = new ArrayList<Duty>();
-        duties.add(new Duty(THIS_YEAR, 1, 1));
-        duties.add(new Duty(THIS_YEAR, 1, 2));
-        duties.add(new Duty(THIS_YEAR, 1, 3));
-        duties.add(new Duty(THIS_YEAR, 1, 4));
+        duties.add(new Duty(THIS_YEAR, 1, 1, "/"));
+        duties.add(new Duty(THIS_YEAR, 1, 2, "/"));
+        duties.add(new Duty(THIS_YEAR, 1, 3, "/"));
+        duties.add(new Duty(THIS_YEAR, 1, 4, "/"));
         for (int i = 0; i < duties.size(); i += 1) {
             builder.putPreference(duties.get(i), i);
         }
