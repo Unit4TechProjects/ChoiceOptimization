@@ -7,13 +7,3 @@ branches:
     - master
 
 script: ant compile && ant runtests
-
-language: python
-python:
-  - "2.7"
-  - "2.6"
-
-install:
-  - pip install pandas
-
-script: nosetests
