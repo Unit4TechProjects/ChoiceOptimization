@@ -114,7 +114,7 @@ public class Schedule extends AbstractMapping<RA, Duty> {
             StringJoiner joiner = new StringJoiner(",");
             joiner.add(ra.toString());
             for (Duty duty : mappings.get(ra)) {
-                joiner.add(duty.toString());
+                joiner.add(duty.toString().replaceAll("0(?=[1-9][/\\-\\.])", ""));
             }
             lines.add(joiner.toString());
         }

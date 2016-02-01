@@ -181,9 +181,9 @@ public class Scheduler {
                         defaultv = Boolean.parseBoolean(fieldValue);
                         break;
                     case "DATA_FILE":
-                        if (!fieldValue.endsWith(".json")) {
+                        if (!fieldValue.endsWith(".csv")) {
                             throw new IllegalArgumentException(String.format("Data file must " 
-                                    + "be a json file, was a .%s.", fieldValue.split(".")[1]));
+                                    + "be a csv file, was a .%s.", fieldValue.split(".")[1]));
                         } else {
                             defaultdf = fieldValue;
                         }
@@ -241,6 +241,9 @@ public class Scheduler {
      * Reads in a JSON data file and constructs RA and Duty instances from it. 
      */
     private static void parseData(boolean primary) {
+        raList = new ArrayList<>();
+        dutyList = new ArrayList<>();
+        dutyLookup = new HashMap<>();
         Charset ascii = StandardCharsets.US_ASCII;
         BufferedReader reader = null;
         try {
@@ -253,7 +256,7 @@ public class Scheduler {
                     if (dateStartIndex == -1) {
                         dateStartIndex = i;
                     }
-                    String[] fields = headings[i].split("[-\\-\\.]");
+                    String[] fields = headings[i].split("[/\\-\\.]");
                     Duty d = new Duty(Integer.parseInt(fields[2]),
                                       Integer.parseInt(fields[0]),
                                       Integer.parseInt(fields[1]),
@@ -282,6 +285,7 @@ public class Scheduler {
                     builder.putPreference(dutyLookup.get(headings[i]), Integer.parseInt(values[i]));
                 }
                 raList.add(builder.build());
+                line = reader.readLine();
             }
 
             ErrorChecker.evalPrefs(raList, dutyList);
@@ -369,7 +373,7 @@ public class Scheduler {
         String resultsFile = "schedule_" 
                         + (new SimpleDateFormat("MM-dd-yyyy-hh:mm")).format(new Date());
         if (secondary) {
-            resultsFile += loc + "-secondary.txt";
+            resultsFile += "-secondary.txt";
         } else {
             resultsFile += loc + "-primary.txt";
         }
@@ -418,11 +422,16 @@ public class Scheduler {
      * @param args Command line arguments 
      */
     public static void main(String[] args) {
-        boolean secondary = args[0].equals("-s");
+        boolean secondary = false;
+        if (args.length == 1) {
+            secondary = args[0].equals("-s");
+        }
         try {
             long timeElapsed = System.nanoTime();
             parseData(!secondary);
+            System.out.println("Parsed Data. Running...");
             Schedule best = run();
+            System.out.println("Finished Run. Writing Results...");
             printResults(best, runTime(System.nanoTime() - timeElapsed), secondary);
             if (ANALYZE) {
                 printAnalytics();

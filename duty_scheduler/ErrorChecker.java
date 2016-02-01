@@ -1,3 +1,4 @@
+
 package duty_scheduler;
 
 /**
@@ -109,7 +110,6 @@ public class ErrorChecker {
     public static void checkConsistency(ArrayList<RA> raList) {
         for (int i = 0; i < prefSumPerRA.length; i++) {
             if (prefSumPerRA[i] != (sumTo(cantDosByDuty.length - cantDosByRA[i]))) {
-                System.out.println(raList.get(i));
                 throw new IllegalArgumentException("One or more RAs have not labeled their doable "
                     + "duties from 1 to n, where n is totalDuties - (duties labeled as cant do). "
                     + "Please revise the preferences.");
