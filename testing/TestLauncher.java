@@ -240,7 +240,7 @@ public class TestLauncher {
     /**
      * Runs JUnit tests and prints verbose information about their results.
      * PrintPosition function and knowledge of JUnit API taken from Josh Hug's 
-     * jh61b package. See https://github.com/Berkeley-CS61B/skeleton/tree/master/lib
+     * jh61b package. 
      * @param args command line args, this function takes none
      */
     public static void main(String[] args) {
